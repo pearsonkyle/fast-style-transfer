@@ -69,7 +69,7 @@ def ffwd_video(path_in, path_out, checkpoint_dir, device_t='/gpu:0', batch_size=
 
 
 # get img_shape
-def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
+def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=1):
     assert len(paths_out) > 0
     is_paths = type(data_in[0]) == str
     if is_paths:
@@ -78,7 +78,7 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
     else:
         assert data_in.size[0] == len(paths_out)
         img_shape = X[0].shape
-
+    
     g = tf.Graph()
     batch_size = min(len(paths_out), batch_size)
     curr_num = 0
@@ -126,6 +126,35 @@ def ffwd(data_in, paths_out, checkpoint_dir, device_t='/gpu:0', batch_size=4):
     if len(remaining_in) > 0:
         ffwd(remaining_in, remaining_out, checkpoint_dir, 
             device_t=device_t, batch_size=1)
+
+# get img_shape
+def ffwds(data_in, model_path, batch_size=1):
+
+    img_shape = data_in[0].shape
+    g = tf.Graph()
+    batch_size = min(len(data_in), batch_size)
+    curr_num = 0
+    soft_config = tf.ConfigProto(allow_soft_placement=True)
+    soft_config.gpu_options.allow_growth = True
+    with g.as_default(), g.device('/gpu:0'), tf.Session(config=soft_config) as sess:
+        batch_shape = (batch_size,) + img_shape
+        img_placeholder = tf.placeholder(tf.float32, shape=batch_shape,
+                                         name='img_placeholder')
+
+        preds = transform.net(img_placeholder)
+        saver = tf.train.Saver()
+        if os.path.isdir(model_path):
+            ckpt = tf.train.get_checkpoint_state(model_path)
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                raise Exception("No checkpoint found...")
+        else:
+            saver.restore(sess, model_path)
+
+        X = data_in[:batch_size]
+        return sess.run(preds, feed_dict={img_placeholder:X})
+
 
 def ffwd_to_img(in_path, out_path, checkpoint_dir, device='/cpu:0'):
     paths_in, paths_out = [in_path], [out_path]
