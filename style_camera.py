@@ -88,8 +88,12 @@ while(True):
             cv2.waitKey(1)
             lerp += 0.25
 
-            #print('lerp:',lerp)
         
 # When everything done, release the capture
 cap.release()
 cv2.destroyAllWindows()
+
+# TODO 
+# add controls to loop through styles 
+# save picture/ pause mode 
+# add controls for kaleidoscope 
